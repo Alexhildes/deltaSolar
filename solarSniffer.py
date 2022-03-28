@@ -30,4 +30,3 @@ registers = {
 
             }
 
-test
