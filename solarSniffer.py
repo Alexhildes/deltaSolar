@@ -16,38 +16,50 @@ gateway =   {
 #Addresses
 registers = {
             "VoltageAC" : {
-                "Address" : "02 05 01 02 10 08 20 3E 03",
+                "Address" : "02 05 01 02 10 08 60 3A 03",
                 "Unit" : "Volts",
-                "Type" : "WholeNumber",
+                "Divisor" : 1,
                         },
 
             "CurrentAC" : {
                 "Address" : "02 05 01 02 10 07 20 3E 03",
                 "Unit" : "Amps",
-                "Type" : "Decimal",
+                "Divisor" : 10,
                         }
 
             }
 
-ser=serial.serial_for_url("socket://192.168.1.212:8899/logging=debug",19200)
+#Timeout
+timeout = 5
+
+ser=serial.serial_for_url("socket://192.168.1.212:8899/logging=debug",19200,timeout=timeout)
 ser.flush()
+print("Flushed serial port")
 
 while True:
 	try:
-		#Request
-		ser.write(bytes.fromhex("02 05 01 02 10 07 20 3E 03"))
 
-		#Response
-		data = ser.read(11).hex()
-		current = data[12:16]
-		print(data)
-		print(len(data))
-		print(current)
-		print(int(current,16)/10)
-		
+		for k,v in registers.items():
+			#Request
+			print("Requesting " + k)
+			ser.write(bytes.fromhex(v["Address"]))
+
+			#Response
+			response = ser.read(11).hex()
+			if len(response) == 22:
+				value = response[12:16]
+				value = int(value,16)/v["Divisor"]
+				print("Request received for " + k)
+				print(value)
+				print(v["Unit"])
+
+			else:
+				print("No valid response received, moving to next")
+
+			time.sleep(1)
+
 		time.sleep(5)
 
- 
 	except KeyboardInterrupt:
         	print("Exiting")
         	sys.exit(0)
