@@ -6,6 +6,9 @@
 import serial
 import time
 import sys
+from influxdb import InfluxDBClient
+import json
+
 
 #Gateway Configuration
 gateway =   {
@@ -32,6 +35,33 @@ registers = {
 #Timeout
 timeout = 5
 
+# Create the InfluxDB client object
+client = InfluxDBClient(host='localhost', port=8086, database='db_Nolla')
+
+def write_data(voltageAC, currentAC, powerAC, measurement="DeltaSolar", device="Serial Gateway"):
+
+     # Create the JSON data structure
+        iso = time.ctime()
+        data = [{
+            "measurement": measurement,
+                "tags": {
+                    "device" : device,
+                },
+                "fields": {
+                    "VoltageAC" : voltageAC,
+                    "CurrentAC" : currentAC,
+                    "PowerAC" : powerAC,
+		}
+            }]
+
+        # Send the JSON data to InfluxDB
+        client.write_points(data)
+        print(iso + ' - Data Sent to InfluxDB')
+
+
+# Blank responses dict
+r = {}
+
 ser=serial.serial_for_url("socket://192.168.1.212:8899/logging=debug",19200,timeout=timeout)
 ser.flush()
 print("Flushed serial port")
@@ -53,12 +83,20 @@ while True:
 				print(value)
 				print(v["Unit"])
 
+				r[k]=value
+
 			else:
 				print("No valid response received, moving to next")
+				v=0
+				#r.update[k]=v
 
 			time.sleep(1)
+		r["PowerAC"] = r["VoltageAC"]*r["CurrentAC"]
+		print(r)
 
-		time.sleep(5)
+		write_data(r["VoltageAC"],r["CurrentAC"],r["PowerAC"])
+
+		time.sleep(30)
 
 	except KeyboardInterrupt:
         	print("Exiting")
