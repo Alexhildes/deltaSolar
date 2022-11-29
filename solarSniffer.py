@@ -1,14 +1,17 @@
 # Author: Alex Hildebrand
-# Date: 28/03/2022
+# Date: 28/11/2022
 # RS485 over IP sniffer
 # Delta Solivia 2.5 G3 Inverter
+# Using Influxdb 2.0 on Docker Image
+
 
 import serial
 import time
 import sys
-from influxdb import InfluxDBClient
 import json
-
+import influxdb_client
+from influxdb_client import InfluxDBClient, Point
+from influxdb_client.client.write_api import SYNCHRONOUS
 
 #Gateway Configuration
 gateway =   {
@@ -35,8 +38,16 @@ registers = {
 #Timeout
 timeout = 5
 
-# Create the InfluxDB client object
-client = InfluxDBClient(host='localhost', port=8086, database='db_Nolla')
+# InfluxDB objects
+bucket = "Nollamara"
+org = "alex"
+token = "YB1zNcwJAMxSSavEQTO-e91vFJ_AMVI9HL19yhAS80KYC0kigHiTK2X_hiTJ844_8NwGR6BxzvWF1CLkoV5_fQ=="
+url = "http://192.168.1.210:8086"
+
+# Influxdb client
+client = influxdb_client.InfluxDBClient(url, token, org)
+
+write_api = client.write_api(write_options=SYNCHRONOUS)
 
 def write_data(voltageAC, currentAC, powerAC, measurement="DeltaSolar", device="Serial Gateway"):
 
@@ -55,9 +66,8 @@ def write_data(voltageAC, currentAC, powerAC, measurement="DeltaSolar", device="
             }]
 
         # Send the JSON data to InfluxDB
-        client.write_points(data)
+        write_api.write(bucket, org, data)
         print(iso + ' - Data Sent to InfluxDB')
-
 
 # Blank responses dict
 r = {}
